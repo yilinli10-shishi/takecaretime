@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>爸爸住院 24小時三人照護輪替表</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+    body { font-family: 'Noto Sans TC', sans-serif; }
+    .badge-btn { transition: all 0.15s ease-in-out; }
+    .badge-btn:active { transform: scale(0.96); }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen p-3 sm:p-6 pb-24">
+
+  <!-- Top Hero Header -->
+  <header class="max-w-4xl mx-auto mb-5 flex flex-wrap items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl shadow-sm border border-slate-200">
+    <div>
+      <h1 class="text-lg sm:text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+        <span class="w-3 h-3 rounded-full bg-indigo-600 inline-block"></span>
+        爸爸住院 24小時照護輪替表
+      </h1>
+      <p class="text-xs text-slate-500 mt-1">
+        早班 (08-14h) · 下午班 (14-20h) · 大夜班 (20-08h) 點擊直接換人
+      </p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="quickBalanceBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-sm active:scale-95 transition">
+        <i class="ph ph-magic-wand text-base"></i> 一鍵平均分配
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto space-y-4">
+
+    <!-- 3 People Summary Cards (Super Clean & Visual) -->
+    <section class="grid grid-cols-3 gap-2 sm:gap-4">
+      <!-- Boyfriend -->
+      <div class="bg-white p-3 sm:p-4 rounded-2xl border-2 border-indigo-200 shadow-sm text-center">
+        <div class="flex items-center justify-center gap-1 text-xs font-bold text-indigo-700 mb-1">
+          <span class="w-2 h-2 rounded-full bg-indigo-600"></span> 男友 (弟弟)
+        </div>
+        <div class="text-xl sm:text-2xl font-black text-slate-900" id="statBfHours">0 <span class="text-xs font-normal text-slate-500">小時</span></div>
+        <div class="text-[11px] sm:text-xs text-indigo-600 font-semibold mt-1 bg-indigo-50 py-0.5 rounded-lg" id="statBfNights">值 0 晚大夜</div>
+      </div>
+
+      <!-- Brother -->
+      <div class="bg-white p-3 sm:p-4 rounded-2xl border-2 border-teal-200 shadow-sm text-center">
+        <div class="flex items-center justify-center gap-1 text-xs font-bold text-teal-700 mb-1">
+          <span class="w-2 h-2 rounded-full bg-teal-600"></span> 哥哥 (超商15-23)
+        </div>
+        <div class="text-xl sm:text-2xl font-black text-slate-900" id="statBroHours">0 <span class="text-xs font-normal text-slate-500">小時</span></div>
+        <div class="text-[11px] sm:text-xs text-teal-600 font-semibold mt-1 bg-teal-50 py-0.5 rounded-lg" id="statBroNights">值 0 晚大夜</div>
+      </div>
+
+      <!-- Mom -->
+      <div class="bg-white p-3 sm:p-4 rounded-2xl border-2 border-rose-200 shadow-sm text-center">
+        <div class="flex items-center justify-center gap-1 text-xs font-bold text-rose-700 mb-1">
+          <span class="w-2 h-2 rounded-full bg-rose-500"></span> 媽媽 (早班)
+        </div>
+        <div class="text-xl sm:text-2xl font-black text-slate-900" id="statMomHours">0 <span class="text-xs font-normal text-slate-500">小時</span></div>
+        <div class="text-[11px] sm:text-xs text-rose-600 font-semibold mt-1 bg-rose-50 py-0.5 rounded-lg" id="statMomShifts">顧 0 次早班</div>
+      </div>
+    </section>
+
+    <!-- Disparity & Fatigue Alert (Simplified) -->
+    <div id="statusAlert" class="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <i class="ph ph-info text-lg text-amber-600 shrink-0"></i>
+        <span id="alertMessage">點選下方按鈕直接切換班別，系統會即時重新計算時數。</span>
+      </div>
+      <span id="diffTag" class="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-200 text-amber-900 shrink-0">差 0 小時</span>
+    </div>
+
+    <!-- Quick Rules Legend -->
+    <div class="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 text-xs text-slate-600 flex flex-wrap items-center justify-between gap-2 shadow-sm">
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="font-bold text-slate-800">時段分配：</span>
+        <span>☀️ 早班 <b>08:00~14:00 (6h)</b></span>
+        <span>🌤️ 下午 <b>14:00~20:00 (6h)</b></span>
+        <span>🌙 大夜 <b>20:00~08:00 (12h)</b></span>
+      </div>
+      <div class="text-slate-400 text-[11px]">
+        👉 點擊人名可直接切換（男友 ⇄ 哥哥 ⇄ 媽媽）
+      </div>
+    </div>
+
+    <!-- Daily Schedule List -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="p-3.5 bg-slate-50 border-b border-slate-200 flex justify-between items-center text-xs font-bold text-slate-600">
+        <span id="scheduleListTitle">24小時輪替清單</span>
+        <span class="text-slate-400 font-normal">早 + 午 + 大夜 = 24 小時守候</span>
+      </div>
+      <div id="scheduleContainer" class="divide-y divide-slate-100">
+        <!-- Rows dynamically inserted here -->
+      </div>
+      <!-- Add more days bar -->
+      <div class="p-3 bg-slate-50/80 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2.5">
+        <div class="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+          <i class="ph ph-calendar-plus text-base text-indigo-600"></i>
+          <span>照護週期持續中？直接往下延伸排班：</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="add7DaysBtn" class="bg-white hover:bg-indigo-50 hover:border-indigo-300 text-indigo-700 border border-slate-300 text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs transition active:scale-95 flex items-center gap-1">
+            <i class="ph ph-plus text-xs"></i> 往後加 7 天
+          </button>
+          <button id="add14DaysBtn" class="bg-white hover:bg-indigo-50 hover:border-indigo-300 text-indigo-700 border border-slate-300 text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs transition active:scale-95 flex items-center gap-1">
+            <i class="ph ph-plus-circle text-xs"></i> 往後加 14 天
+          </button>
+          <button id="clearAllLocksBtn" class="bg-white hover:bg-rose-50 hover:border-rose-300 text-slate-500 hover:text-rose-600 border border-slate-200 text-xs font-medium px-2.5 py-1.5 rounded-xl transition active:scale-95" title="解除所有班別的手動鎖定">
+            解鎖重置
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Notification Toast -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-4 py-2.5 rounded-full shadow-lg opacity-0 transition-opacity duration-200 pointer-events-none z-50 flex items-center gap-1.5">
+    <i class="ph ph-check-circle text-emerald-400 text-base"></i>
+    <span id="toastText">已更新</span>
+  </div>
+
+  <script>
+    // Simplified Data Structure
+    const SHIFT_HOURS = { morning: 6, afternoon: 6, night: 12 };
+
+    const MEMBERS = {
+      'BF': { name: '弟弟', bg: 'bg-indigo-600', text: 'text-white' },
+      'BRO': { name: '哥哥', bg: 'bg-teal-600', text: 'text-white' },
+      'MOM': { name: '媽媽', bg: 'bg-rose-500', text: 'text-white' }
+    };
+
+    const WEEK_NAMES = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+
+    // Schedule array
+    let schedule = [];
+    let baseStartDate = new Date();
+
+    function createDayEntry(targetDate, index) {
+      const dayOfWeek = targetDate.getDay();
+      const dateStr = `${targetDate.getMonth() + 1}/${targetDate.getDate()}`;
+      const dayName = WEEK_NAMES[dayOfWeek];
+
+      // 預設規則：
+      // 媽媽在非週一/三/五支援早班，否則由弟弟接
+      let morning = (dayOfWeek === 1 || dayOfWeek === 3 || dayOfWeek === 5) ? 'BF' : 'MOM';
+      // 下午班由弟弟顧
+      let afternoon = 'BF';
+      // 大夜由兄弟輪流
+      let night = (index % 2 === 0) ? 'BF' : 'BRO';
+
+      return {
+        dateObj: new Date(targetDate),
+        dateStr,
+        dayName,
+        dayOfWeek,
+        morning,
+        afternoon,
+        night,
+        locked: { morning: false, afternoon: false, night: false }
+      };
+    }
+
+    function initSchedule(daysCount = 10) {
+      baseStartDate = new Date();
+      schedule = [];
+
+      for (let i = 0; i < daysCount; i++) {
+        const d = new Date(baseStartDate);
+        d.setDate(baseStartDate.getDate() + i);
+        schedule.push(createDayEntry(d, i));
+      }
+    }
+
+    function appendMoreDays(countToAdd) {
+      const lastItem = schedule[schedule.length - 1];
+      const startRefDate = lastItem ? new Date(lastItem.dateObj) : new Date();
+
+      for (let i = 1; i <= countToAdd; i++) {
+        const nextDate = new Date(startRefDate);
+        nextDate.setDate(startRefDate.getDate() + i);
+        schedule.push(createDayEntry(nextDate, schedule.length));
+      }
+
+      renderList();
+      updateCalculations();
+      showToast(`已成功往後新增 ${countToAdd} 天輪替表！`);
+    }
+
+    function updateCalculations() {
+      let bfH = 0, broH = 0, momH = 0;
+      let bfNights = 0, broNights = 0, momMornings = 0;
+      let consecutiveBfNights = 0, maxBfNights = 0;
+
+      schedule.forEach(item => {
+        // 早班
+        if (item.morning === 'BF') bfH += SHIFT_HOURS.morning;
+        if (item.morning === 'BRO') broH += SHIFT_HOURS.morning;
+        if (item.morning === 'MOM') { momH += SHIFT_HOURS.morning; momMornings++; }
+
+        // 下午班
+        if (item.afternoon === 'BF') bfH += SHIFT_HOURS.afternoon;
+        if (item.afternoon === 'BRO') broH += SHIFT_HOURS.afternoon;
+        if (item.afternoon === 'MOM') momH += SHIFT_HOURS.afternoon;
+
+        // 大夜班
+        if (item.night === 'BF') {
+          bfH += SHIFT_HOURS.night;
+          bfNights++;
+          consecutiveBfNights++;
+          if (consecutiveBfNights > maxBfNights) maxBfNights = consecutiveBfNights;
+        } else {
+          consecutiveBfNights = 0;
+        }
+
+        if (item.night === 'BRO') {
+          broH += SHIFT_HOURS.night;
+          broNights++;
+        }
+      });
+
+      // Update UI Counters
+      document.getElementById('statBfHours').innerHTML = `${bfH} <span class="text-xs font-normal text-slate-500">小時</span>`;
+      document.getElementById('statBfNights').textContent = `值 ${bfNights} 晚大夜`;
+
+      document.getElementById('statBroHours').innerHTML = `${broH} <span class="text-xs font-normal text-slate-500">小時</span>`;
+      document.getElementById('statBroNights').textContent = `值 ${broNights} 晚大夜`;
+
+      document.getElementById('statMomHours').innerHTML = `${momH} <span class="text-xs font-normal text-slate-500">小時</span>`;
+      document.getElementById('statMomShifts').textContent = `顧 ${momMornings} 次早班`;
+
+      // Status Alert Message
+      const diff = Math.abs(bfH - broH);
+      const diffTag = document.getElementById('diffTag');
+      const alertMsg = document.getElementById('alertMessage');
+      const alertBox = document.getElementById('statusAlert');
+
+      diffTag.textContent = `兄弟差 ${diff} 小時`;
+
+      if (maxBfNights >= 3) {
+        alertBox.className = "bg-rose-50 border border-rose-300 text-rose-900 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium flex items-center justify-between";
+        alertMsg.innerHTML = `⚠️ <b>弟弟連續大夜達 ${maxBfNights} 晚過累！</b>請將大夜改給哥哥值。`;
+      } else if (diff <= 12) {
+        alertBox.className = "bg-emerald-50 border border-emerald-200 text-emerald-900 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium flex items-center justify-between";
+        alertMsg.innerHTML = `✅ <b>目前三人排班相當平均！</b>弟弟 ${bfH}h / 哥哥 ${broH}h / 媽媽 ${momH}h，大家都有充分補眠時間。`;
+      } else {
+        alertBox.className = "bg-amber-50 border border-amber-200 text-amber-900 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium flex items-center justify-between";
+        alertMsg.innerHTML = `💡 目前弟弟 ${bfH} 小時 vs 哥哥 ${broH} 小時。可點選「一鍵平均分配」針對尚未手動調整的日期進行配平。`;
+      }
+    }
+
+    function renderList() {
+      const container = document.getElementById('scheduleContainer');
+      container.innerHTML = '';
+
+      // Update title with count of days
+      const listTitle = document.getElementById('scheduleListTitle');
+      if (listTitle) {
+        listTitle.textContent = `24小時輪替清單（共 ${schedule.length} 天）`;
+      }
+
+      schedule.forEach((item, idx) => {
+        const isWeekend = item.dayOfWeek === 0 || item.dayOfWeek === 6;
+
+        const row = document.createElement('div');
+        row.className = 'p-3 sm:p-4 hover:bg-slate-50 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3';
+
+        // Clean date section without distracting status tags
+        const dateHtml = `
+          <div class="flex items-center gap-2 min-w-[110px]">
+            <span class="font-black text-sm sm:text-base text-slate-800">${item.dateStr}</span>
+            <span class="text-xs px-2 py-0.5 rounded-md font-semibold ${isWeekend ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700'}">${item.dayName}</span>
+          </div>
+        `;
+
+        // 3 Shifts clickable badges with subtle lock indicators
+        const mInfo = MEMBERS[item.morning];
+        const aInfo = MEMBERS[item.afternoon];
+        const nInfo = MEMBERS[item.night];
+
+        const isMLocked = item.locked.morning;
+        const isALocked = item.locked.afternoon;
+        const isNLocked = item.locked.night;
+
+        const shiftsHtml = `
+          <div class="grid grid-cols-3 gap-2 flex-1 max-w-lg">
+            <!-- Morning -->
+            <button onclick="cycleShift(${idx}, 'morning')" class="badge-btn relative flex flex-col items-center justify-center py-1.5 px-2 rounded-xl text-xs font-bold ${mInfo.bg} ${mInfo.text} shadow-sm" title="點擊換人 (已手動鎖定)">
+              <span class="text-[10px] opacity-80 font-normal flex items-center gap-0.5">
+                早 08-14h ${isMLocked ? '<i class="ph ph-lock-key text-[9px]"></i>' : ''}
+              </span>
+              <span>${mInfo.name}</span>
+            </button>
+
+            <!-- Afternoon -->
+            <button onclick="cycleShift(${idx}, 'afternoon')" class="badge-btn relative flex flex-col items-center justify-center py-1.5 px-2 rounded-xl text-xs font-bold ${aInfo.bg} ${aInfo.text} shadow-sm" title="點擊換人 (已手動鎖定)">
+              <span class="text-[10px] opacity-80 font-normal flex items-center gap-0.5">
+                午 14-20h ${isALocked ? '<i class="ph ph-lock-key text-[9px]"></i>' : ''}
+              </span>
+              <span>${aInfo.name}</span>
+            </button>
+
+            <!-- Night -->
+            <button onclick="cycleShift(${idx}, 'night')" class="badge-btn relative flex flex-col items-center justify-center py-1.5 px-2 rounded-xl text-xs font-bold ${nInfo.bg} ${nInfo.text} shadow-sm border border-slate-700/20" title="點擊換人 (已手動鎖定)">
+              <span class="text-[10px] opacity-80 font-normal flex items-center gap-0.5">
+                🌙 大夜 20-08h ${isNLocked ? '<i class="ph ph-lock-key text-[9px]"></i>' : ''}
+              </span>
+              <span>${nInfo.name}</span>
+            </button>
+          </div>
+        `;
+
+        // Total hours for this day
+        let dayBfH = (item.morning === 'BF' ? 6 : 0) + (item.afternoon === 'BF' ? 6 : 0) + (item.night === 'BF' ? 12 : 0);
+        let dayBroH = (item.morning === 'BRO' ? 6 : 0) + (item.afternoon === 'BRO' ? 6 : 0) + (item.night === 'BRO' ? 12 : 0);
+        let dayMomH = (item.morning === 'MOM' ? 6 : 0);
+
+        let desc = [];
+        if (dayMomH > 0) desc.push(`媽 ${dayMomH}h`);
+        if (dayBroH > 0) desc.push(`哥 ${dayBroH}h`);
+        if (dayBfH > 0) desc.push(`弟 ${dayBfH}h`);
+
+        const summaryHtml = `
+          <div class="text-[11px] sm:text-xs text-slate-500 font-medium sm:text-right min-w-[120px]">
+            ${desc.join(' + ')}
+          </div>
+        `;
+
+        row.innerHTML = dateHtml + shiftsHtml + summaryHtml;
+        container.appendChild(row);
+      });
+    }
+
+    window.cycleShift = function(index, shiftType) {
+      const order = shiftType === 'night' ? ['BF', 'BRO'] : ['MOM', 'BRO', 'BF'];
+      const current = schedule[index][shiftType];
+      const next = order[(order.indexOf(current) + 1) % order.length];
+      
+      schedule[index][shiftType] = next;
+      // 標記為使用者手動指定，未來自動平衡時會保留這格
+      schedule[index].locked[shiftType] = true;
+
+      renderList();
+      updateCalculations();
+      showToast(`${schedule[index].dateStr} ${shiftType === 'morning' ? '早班' : shiftType === 'afternoon' ? '下午' : '大夜'} 已改為【${MEMBERS[next].name}】並鎖定`);
+    };
+
+    /**
+     * 一鍵平衡的基準與邏輯：
+     * 1. 「保留手動成果」：使用者已經點擊設定的班別（鎖定）絕對不動。
+     * 2. 「動態比對累積時數」：先統計目前已鎖定天數中，弟弟 vs 哥哥 各自累積的總時數。
+     * 3. 「補足落差」：只針對「尚未手動調整」的剩餘班次進行分配；誰目前的累積時數較少，就優先分給誰（大夜 12h 優先給時數較少的人），直到雙方時數拉近平衡。
+     */
+    document.getElementById('quickBalanceBtn').addEventListener('click', () => {
+      // 1. 先計算目前弟弟與哥哥的累積時數
+      let bfHours = 0;
+      let broHours = 0;
+
+      schedule.forEach(item => {
+        if (item.morning === 'BF') bfHours += 6;
+        if (item.morning === 'BRO') broHours += 6;
+        if (item.afternoon === 'BF') bfHours += 6;
+        if (item.afternoon === 'BRO') broHours += 6;
+        if (item.night === 'BF') bfHours += 12;
+        if (item.night === 'BRO') broHours += 12;
+      });
+
+      // 2. 針對未鎖定的班次進行配平（大夜 12h 優先給累積時數較少的人）
+      schedule.forEach(item => {
+        // 早班未鎖定：媽媽優先，若非媽媽則給時數少的人
+        if (!item.locked.morning) {
+          if (item.dayOfWeek === 1 || item.dayOfWeek === 3 || item.dayOfWeek === 5) {
+            if (broHours < bfHours) {
+              item.morning = 'BRO';
+              broHours += 6;
+            } else {
+              item.morning = 'BF';
+              bfHours += 6;
+            }
+          } else {
+            item.morning = 'MOM';
+          }
+        }
+
+        // 下午班未鎖定：補給時數較少者
+        if (!item.locked.afternoon) {
+          if (broHours < bfHours) {
+            item.afternoon = 'BRO';
+            broHours += 6;
+          } else {
+            item.afternoon = 'BF';
+            bfHours += 6;
+          }
+        }
+
+        // 大夜班未鎖定：優先給累積時數少的人以拉平工時
+        if (!item.locked.night) {
+          if (broHours <= bfHours) {
+            item.night = 'BRO';
+            broHours += 12;
+          } else {
+            item.night = 'BF';
+            bfHours += 12;
+          }
+        }
+      });
+
+      renderList();
+      updateCalculations();
+      showToast('已根據目前累積時數，智慧補足未鎖定的班別！');
+    });
+
+    // Add more days events
+    document.getElementById('add7DaysBtn').addEventListener('click', () => appendMoreDays(7));
+    document.getElementById('add14DaysBtn').addEventListener('click', () => appendMoreDays(14));
+
+    // Clear all manual locks
+    document.getElementById('clearAllLocksBtn').addEventListener('click', () => {
+      schedule.forEach(item => {
+        item.locked = { morning: false, afternoon: false, night: false };
+      });
+      renderList();
+      showToast('已解除所有班別的鎖定標記，現在點擊一鍵平均分配會全面重新平衡。');
+    });
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastText = document.getElementById('toastText');
+      if (toastText) toastText.textContent = msg;
+      if (toast) {
+        toast.classList.remove('opacity-0');
+        toast.classList.add('opacity-100');
+        setTimeout(() => {
+          toast.classList.remove('opacity-100');
+          toast.classList.add('opacity-0');
+        }, 2500);
+      }
+    }
+
+    // Initialize
+    window.onload = function() {
+      initSchedule();
+      renderList();
+      updateCalculations();
+    };
+  </script>
+</body>
+</html>
