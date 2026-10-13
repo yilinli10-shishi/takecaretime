@@ -8,6 +8,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Phosphor Icons -->
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <!-- html2canvas for Image Generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
     body { font-family: 'Noto Sans TC', sans-serif; }
@@ -29,14 +31,18 @@
       </p>
     </div>
     <div class="flex items-center gap-2">
+      <!-- Image Download Button -->
+      <button id="downloadImageBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-sm active:scale-95 transition">
+        <i class="ph ph-image text-base"></i> 下載圖片 (傳LINE)
+      </button>
       <button id="quickBalanceBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-sm active:scale-95 transition">
         <i class="ph ph-magic-wand text-base"></i> 一鍵平均分配
       </button>
     </div>
   </header>
 
-  <main class="max-w-4xl mx-auto space-y-4">
-
+  <!-- Capture Area Wrapper for Image Download -->
+  <div id="captureArea" class="max-w-4xl mx-auto space-y-4 p-1">
     <!-- 4 People Summary Cards -->
     <section class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
       <!-- Younger Brother (Boyfriend) -->
@@ -126,8 +132,7 @@
         </div>
       </div>
     </div>
-
-  </main>
+  </div><!-- End of #captureArea -->
 
   <!-- Notification Toast -->
   <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs px-4 py-2.5 rounded-full shadow-lg opacity-0 transition-opacity duration-200 pointer-events-none z-50 flex items-center gap-1.5">
@@ -477,6 +482,48 @@
       });
       renderList();
       showToast('已解除所有班別的鎖定標記，現在點擊一鍵平均分配會全面重新平衡。');
+    });
+
+    // Download Schedule as Image
+    document.getElementById('downloadImageBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('downloadImageBtn');
+      const originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<i class="ph ph-spinner animate-spin text-base"></i> 產生中...';
+      showToast('正在產生高畫質班表圖片，請稍候...');
+
+      try {
+        const captureEl = document.getElementById('captureArea');
+        
+        // Use html2canvas with high scale for crisp image output on mobile & desktop
+        const canvas = await html2canvas(captureEl, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#f1f5f9', // matches bg-slate-100
+          logging: false
+        });
+
+        const imageUri = canvas.toDataURL('image/png');
+        const now = new Date();
+        const dateTag = `${now.getMonth() + 1}月${now.getDate()}日`;
+        const fileName = `爸爸住院24小時照護輪替表_${dateTag}.png`;
+
+        // Create download link
+        const link = document.createElement('a');
+        link.href = imageUri;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        showToast(`已成功下載「${fileName}」，可直接傳到 LINE 給家人！`);
+      } catch (err) {
+        console.error('產生圖片失敗:', err);
+        showToast('產生圖片失敗，請重試或使用手機螢幕截圖。');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
     });
 
     function showToast(msg) {
