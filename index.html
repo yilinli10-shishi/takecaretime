@@ -41,6 +41,35 @@
     </div>
   </header>
 
+  <!-- Schedule Days Selector Toolbar -->
+  <section class="max-w-4xl mx-auto mb-4 bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200">
+    <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div class="flex items-center gap-2">
+        <i class="ph ph-calendar text-base text-indigo-600"></i>
+        <span class="font-bold text-slate-700">排班天數選擇：</span>
+        <div class="flex flex-wrap items-center gap-1.5">
+          <button onclick="setScheduleDays(7)" data-days="7" class="days-btn px-2.5 py-1.5 rounded-xl font-bold border border-slate-200 bg-slate-50 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition">7 天 (1週)</button>
+          <button onclick="setScheduleDays(10)" data-days="10" class="days-btn px-2.5 py-1.5 rounded-xl font-bold border border-indigo-600 bg-indigo-600 text-white shadow-xs transition">10 天</button>
+          <button onclick="setScheduleDays(14)" data-days="14" class="days-btn px-2.5 py-1.5 rounded-xl font-bold border border-slate-200 bg-slate-50 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition">14 天 (2週)</button>
+          <button onclick="setScheduleDays(21)" data-days="21" class="days-btn px-2.5 py-1.5 rounded-xl font-bold border border-slate-200 bg-slate-50 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition">21 天 (3週)</button>
+          <button onclick="setScheduleDays(30)" data-days="30" class="days-btn px-2.5 py-1.5 rounded-xl font-bold border border-slate-200 bg-slate-50 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition">30 天 (1個月)</button>
+        </div>
+      </div>
+      
+      <!-- Custom Days Input -->
+      <div class="flex items-center gap-1.5">
+        <span class="text-slate-500 font-medium">自訂天數：</span>
+        <div class="flex items-center border border-slate-300 rounded-xl overflow-hidden focus-within:border-indigo-500 bg-white shadow-xs">
+          <input type="number" id="customDaysInput" min="1" max="90" placeholder="天數" class="w-16 px-2.5 py-1.5 text-center text-xs font-bold text-slate-800 outline-none" />
+          <span class="pr-2 text-xs text-slate-400">天</span>
+        </div>
+        <button id="applyCustomDaysBtn" class="bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-xs active:scale-95 transition">
+          套用
+        </button>
+      </div>
+    </div>
+  </section>
+
   <!-- Capture Area Wrapper for Image Download -->
   <div id="captureArea" class="max-w-4xl mx-auto space-y-4 p-1">
     <!-- 4 People Summary Cards -->
@@ -191,19 +220,54 @@
       }
     }
 
-    function appendMoreDays(countToAdd) {
-      const lastItem = schedule[schedule.length - 1];
-      const startRefDate = lastItem ? new Date(lastItem.dateObj) : new Date();
+    // 依指定天數重設或延伸/截短呈現天數（保留已有天數的手動調整與鎖定狀態）
+    window.setScheduleDays = function(targetDays) {
+      targetDays = parseInt(targetDays, 10);
+      if (isNaN(targetDays) || targetDays < 1) targetDays = 7;
+      if (targetDays > 90) targetDays = 90; // 上限防呆
 
-      for (let i = 1; i <= countToAdd; i++) {
-        const nextDate = new Date(startRefDate);
-        nextDate.setDate(startRefDate.getDate() + i);
-        schedule.push(createDayEntry(nextDate, schedule.length));
+      if (schedule.length === 0) {
+        initSchedule(targetDays);
+      } else if (targetDays < schedule.length) {
+        // 截短至目標天數（保留前面的調整）
+        schedule = schedule.slice(0, targetDays);
+      } else if (targetDays > schedule.length) {
+        // 接續既有天數往下延伸
+        const lastItem = schedule[schedule.length - 1];
+        const startRefDate = lastItem ? new Date(lastItem.dateObj) : new Date();
+        const diff = targetDays - schedule.length;
+
+        for (let i = 1; i <= diff; i++) {
+          const nextDate = new Date(startRefDate);
+          nextDate.setDate(startRefDate.getDate() + i);
+          schedule.push(createDayEntry(nextDate, schedule.length));
+        }
       }
 
+      updateDaysBtnUI(targetDays);
       renderList();
       updateCalculations();
-      showToast(`已成功往後新增 ${countToAdd} 天輪替表！`);
+      showToast(`已切換為呈現 ${targetDays} 天班表！`);
+    };
+
+    function updateDaysBtnUI(currentDays) {
+      document.querySelectorAll('.days-btn').forEach(btn => {
+        const days = parseInt(btn.getAttribute('data-days'), 10);
+        if (days === currentDays) {
+          btn.className = 'days-btn px-3 py-1.5 rounded-xl font-bold border border-indigo-600 bg-indigo-600 text-white shadow-xs transition';
+        } else {
+          btn.className = 'days-btn px-3 py-1.5 rounded-xl font-bold border border-slate-200 bg-slate-50 text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition';
+        }
+      });
+      const customInput = document.getElementById('customDaysInput');
+      if (customInput && ![7, 10, 14, 21, 30].includes(currentDays)) {
+        customInput.value = currentDays;
+      }
+    }
+
+    function appendMoreDays(countToAdd) {
+      const newTotal = schedule.length + countToAdd;
+      window.setScheduleDays(newTotal);
     }
 
     // 計算當日各班實際時數（確保全日無縫銜接且總合精確為 24 小時）
@@ -475,6 +539,16 @@
     document.getElementById('add7DaysBtn').addEventListener('click', () => appendMoreDays(7));
     document.getElementById('add14DaysBtn').addEventListener('click', () => appendMoreDays(14));
 
+    // Custom days input trigger
+    document.getElementById('applyCustomDaysBtn').addEventListener('click', () => {
+      const val = parseInt(document.getElementById('customDaysInput').value, 10);
+      if (val && val > 0) {
+        window.setScheduleDays(val);
+      } else {
+        showToast('請輸入有效的天數（1~90天）');
+      }
+    });
+
     // Clear all manual locks
     document.getElementById('clearAllLocksBtn').addEventListener('click', () => {
       schedule.forEach(item => {
@@ -542,7 +616,8 @@
 
     // Initialize
     window.onload = function() {
-      initSchedule();
+      initSchedule(10);
+      updateDaysBtnUI(10);
       renderList();
       updateCalculations();
     };
